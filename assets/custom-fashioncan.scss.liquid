@@ -1,0 +1,153 @@
+$small: 480px;
+$medium: 769px;
+$large: 1024px;
+
+// Colors
+
+$color-1: #008080;
+
+// Fonts
+
+// General
+
+.button.outline {
+  line-height: 1rem;
+  padding: 10px 15px !important;
+  font-size: .8rem !important;
+  letter-spacing: 1px;
+  margin-top: 10px !important;
+  display: inline-block;
+}
+
+// Header
+
+#shopify-section-header {
+  .site-header {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  
+  header.site-header.minimal nav.nav-bar {
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  header.site-header.minimal nav.nav-bar ul.site-nav > li > a {
+	padding: 6px 12px;
+	font-size: .8rem;
+    font-weight: 300;
+  }
+  
+  header.site-header nav.nav-bar ul.site-nav li.has-dropdown > a::after {
+	display: none;
+  }
+}
+
+// Footer
+
+#shopify-section-footer {
+}
+
+// Home Page
+
+.template-index {
+  .slideshow {
+    .content-wrapper {
+      max-width: 100%;
+      padding: 20px;
+      position: absolute;
+
+      @media(min-width: $medium) {
+        max-width: 40%;
+      }
+      
+      .content-contain {
+        max-width: unset;
+      }
+      
+      .content-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+      }
+    }
+  }
+  
+  .index-testimonials {
+    margin: 20px 0 0 0;
+    padding: 50px 0 35px;
+    text-align: center;
+    
+    button {
+      background: transparent;
+    }
+    
+    blockquote {
+      p, svg {
+        display: inline-block;
+      }
+      
+      svg {
+        margin-right: 15px;
+        width: 24px;
+        vertical-align: middle;
+        
+        &.end {
+          margin: 0 0 0 15px;
+          transform: rotate(180deg);
+        }
+        
+        path {
+          fill: $color-1;
+        }
+      }
+    }
+  }
+}
+
+// Pages
+
+.template-page {
+}
+
+// Collection Page
+
+.template-collection {
+  .social-icons {
+    display: none;
+  }
+  
+  UNDO.collection aside nav {
+    margin-bottom: 0;
+  }
+  
+  .collection-container.sidebar-empty {
+	width: 100% !important;
+    
+    .products {
+      & > .box {
+        width: 50%;
+        
+        @media(min-width: $medium) {
+          width: 25%;
+        }
+      }
+    }
+  }
+  
+  #shopify-section-collection-template .description {
+	margin-top: 16px;
+	border-top: 1px solid #ededed;
+	padding-top: 16px;
+  }
+}
+
+// Product Page
+
+.template-product {
+}
+
+// Blogs

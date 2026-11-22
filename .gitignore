@@ -1,0 +1,12 @@
+# Local environment
+.DS_Store
+.env
+.env.*
+!.env.example
+# Dependencies
+node_modules/
+# Credentials
+*.pem
+*.key
+# Logs
+*.log
