@@ -1,0 +1,25 @@
+name: Shopify Theme Check
+
+on:
+  pull_request:
+    branches:
+      - main
+      - shopify-sync
+
+permissions:
+  contents: read
+
+jobs:
+  theme-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install Shopify CLI
+        run: npm install --global @shopify/cli
+
+      - name: Run Theme Check
+        run: shopify theme check
+        continue-on-error: true
