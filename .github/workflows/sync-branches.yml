@@ -34,56 +34,74 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          SOURCE: ${{ github.ref_name }}
         shell: bash
         run: |
           set -euo pipefail
 
           git fetch origin main shopify-sync
 
-          MAIN=origin/main
-          SHOPIFY=origin/shopify-sync
-
-          # No differences in file contents
-          if git diff --quiet "$MAIN" "$SHOPIFY"; then
-            echo "Branches have identical contents."
-            exit 0
-          fi
-
-          # Determine which branch is ahead
-          if git merge-base --is-ancestor "$SHOPIFY" "$MAIN"; then
-            SOURCE=main
-            TARGET=shopify-sync
-          elif git merge-base --is-ancestor "$MAIN" "$SHOPIFY"; then
-            SOURCE=shopify-sync
-            TARGET=main
+          if [[ "$SOURCE" == "main" ]]; then
+            TARGET="shopify-sync"
+          elif [[ "$SOURCE" == "shopify-sync" ]]; then
+            TARGET="main"
           else
-            echo "::warning::Both branches have diverged. Manual reconciliation required."
+            echo "Unsupported source branch: $SOURCE"
+            exit 1
+          fi
+
+          SYNC_BRANCH="sync/${SOURCE}-to-${TARGET}"
+
+          # If source is already incorporated into target, nothing to do.
+          if git merge-base --is-ancestor \
+            "origin/$SOURCE" "origin/$TARGET"; then
+            echo "$SOURCE is already incorporated into $TARGET."
             exit 0
           fi
 
-          echo "Synchronizing $SOURCE into $TARGET"
+          # Don't create competing synchronization PRs.
+          REVERSE_BRANCH="sync/${TARGET}-to-${SOURCE}"
 
-          # Avoid duplicate synchronization PRs
+          REVERSE_PR=$(gh pr list \
+            --state open \
+            --head "$REVERSE_BRANCH" \
+            --json number \
+            --jq '.[0].number // empty')
+
+          if [[ -n "$REVERSE_PR" ]]; then
+            echo "::warning::Reverse synchronization PR #$REVERSE_PR is open."
+            echo "Merge or close it before synchronizing in the other direction."
+            exit 0
+          fi
+
+          # Start from the current target branch.
+          git switch -C "$SYNC_BRANCH" "origin/$TARGET"
+
+          # Merge source into target without modifying either permanent branch.
+          if ! git merge --no-ff --no-edit "origin/$SOURCE"; then
+            git merge --abort
+            echo "::error::Merge conflict between $SOURCE and $TARGET."
+            echo "Manual reconciliation required."
+            exit 1
+          fi
+
+          # No content changes means ancestry-only synchronization.
+          # Still push the merge commit to preserve history.
+          git push --force-with-lease origin "$SYNC_BRANCH"
+
           EXISTING=$(gh pr list \
             --base "$TARGET" \
-            --head "sync/$SOURCE-to-$TARGET" \
+            --head "$SYNC_BRANCH" \
             --state open \
             --json number \
             --jq '.[0].number // empty')
 
-          if [ -n "$EXISTING" ]; then
-            echo "Synchronization PR #$EXISTING already exists."
-            exit 0
+          if [[ -n "$EXISTING" ]]; then
+            echo "Updated synchronization PR #$EXISTING."
+          else
+            gh pr create \
+              --base "$TARGET" \
+              --head "$SYNC_BRANCH" \
+              --title "Sync $SOURCE into $TARGET" \
+              --body "Automatically generated synchronization PR. Review before merging."
           fi
-
-          # Create a temporary branch from the source
-          git switch --detach "origin/$SOURCE"
-          git switch -c "sync/$SOURCE-to-$TARGET"
-
-          git push origin "sync/$SOURCE-to-$TARGET"
-
-          gh pr create \
-            --base "$TARGET" \
-            --head "sync/$SOURCE-to-$TARGET" \
-            --title "Sync $SOURCE into $TARGET" \
-            --body "Automatically generated synchronization PR. Review before merging."
