@@ -56,7 +56,7 @@ jobs:
 
           THEME_ID=$(jq -r \
             --arg name "$THEME_NAME" \
-            '.[] | select(.name == $name and .role == "unpublished") | .id' \
+            '.themes[] | select(.name == $name and .role == "unpublished") | .id' \
             themes.json | head -n 1)
 
           echo "name=$THEME_NAME" >> "$GITHUB_OUTPUT"
@@ -92,17 +92,44 @@ jobs:
               --json > deployment.json
           fi
 
-          DEPLOYED_ID=$(jq -r '.theme.id // empty' deployment.json)
-          DEPLOYED_ROLE=$(jq -r '.theme.role // empty' deployment.json)
-          PREVIEW_URL=$(jq -r '.theme.preview_url // empty' deployment.json)
+          # Shopify CLI JSON may use either a nested theme
+          # object or top-level theme properties.
+          DEPLOYED_ID=$(jq -r \
+            '.theme.id // .id // empty' deployment.json)
 
-          if [[ -z "$DEPLOYED_ID" || -z "$PREVIEW_URL" ]]; then
-            echo "::error::Shopify did not return a theme ID and preview URL."
+          PREVIEW_URL=$(jq -r \
+            '.theme.preview_url // .preview_url // empty' \
+            deployment.json)
+
+          # If the CLI did not return a preview URL,
+          # construct one from the deployed theme ID.
+          if [[ -z "$PREVIEW_URL" && -n "$DEPLOYED_ID" ]]; then
+            PREVIEW_URL="https://${SHOPIFY_FLAG_STORE}/?preview_theme_id=${DEPLOYED_ID}"
+          fi
+
+          if [[ -z "$DEPLOYED_ID" ]]; then
+            echo "::error::Could not determine deployed theme ID."
+            cat deployment.json
             exit 1
           fi
 
-          if [[ "$DEPLOYED_ROLE" != "unpublished" ]]; then
-            echo "::error::Unexpected theme role: $DEPLOYED_ROLE"
+          # Verify the deployed theme is the expected
+          # unpublished PR preview before continuing.
+          shopify theme list --json > themes-after.json
+
+          MATCH=$(jq -r \
+            --argjson id "$DEPLOYED_ID" \
+            --arg name "$THEME_NAME" \
+            '.themes[]
+             | select(
+                 (.id | tonumber) == $id
+                 and .name == $name
+                 and .role == "unpublished"
+               )
+             | .id' themes-after.json)
+
+          if [[ -z "$MATCH" ]]; then
+            echo "::error::Deployed theme failed safety verification."
             exit 1
           fi
 
@@ -110,6 +137,8 @@ jobs:
           echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
 
           echo "Preview deployed successfully."
+          echo "Theme ID: $DEPLOYED_ID"
+          echo "Preview URL: $PREVIEW_URL"
 
       - name: Create or update PR comment
         shell: bash
@@ -138,7 +167,7 @@ jobs:
           | Status | Deployed |
           | Commit | \`${GITHUB_SHA:0:7}\` |
 
-          This preview is automatically updated when new commits are pushed.
+          This preview updates automatically when new commits are pushed.
 
           The temporary Shopify theme will be deleted when this PR closes.
           EOF
@@ -201,8 +230,12 @@ jobs:
 
           THEME_ID=$(jq -r \
             --arg name "$THEME_NAME" \
-            '.[] | select(.name == $name and .role == "unpublished") | .id' \
-            themes.json | head -n 1)
+            '.themes[]
+             | select(
+                 .name == $name
+                 and .role == "unpublished"
+               )
+             | .id' themes.json | head -n 1)
 
           echo "id=$THEME_ID" >> "$GITHUB_OUTPUT"
 
