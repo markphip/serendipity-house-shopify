@@ -1,0 +1,300 @@
+name: Shopify PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: shopify-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    name: Deploy PR Preview
+    if: >-
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !startsWith(github.event.pull_request.head.ref, 'sync/')
+
+    runs-on: ubuntu-latest
+
+    env:
+      SHOPIFY_CLI_THEME_TOKEN: ${{ secrets.SHOPIFY_CLI_THEME_TOKEN }}
+      SHOPIFY_FLAG_STORE: ${{ vars.SHOPIFY_STORE }}
+      SHOPIFY_FLAG_NO_INPUT: "1"
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Install Shopify CLI
+        run: npm install --global @shopify/cli@latest
+
+      - name: Find existing preview theme
+        id: theme
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          THEME_NAME="GitHub PR-${PR_NUMBER}"
+
+          shopify theme list --json > themes.json
+
+          THEME_ID=$(jq -r \
+            --arg name "$THEME_NAME" \
+            '.themes[] | select(.name == $name and .role == "unpublished") | .id' \
+            themes.json | head -n 1)
+
+          echo "name=$THEME_NAME" >> "$GITHUB_OUTPUT"
+          echo "id=$THEME_ID" >> "$GITHUB_OUTPUT"
+
+          if [[ -n "$THEME_ID" ]]; then
+            echo "Found existing preview theme: $THEME_ID"
+          else
+            echo "No existing preview theme found."
+          fi
+
+      - name: Create or update preview theme
+        id: deploy
+        shell: bash
+        env:
+          THEME_ID: ${{ steps.theme.outputs.id }}
+          THEME_NAME: ${{ steps.theme.outputs.name }}
+        run: |
+          set -euo pipefail
+
+          if [[ -n "$THEME_ID" ]]; then
+            echo "Updating preview theme $THEME_ID"
+
+            shopify theme push \
+              --theme "$THEME_ID" \
+              --json > deployment.json
+          else
+            echo "Creating preview theme $THEME_NAME"
+
+            shopify theme push \
+              --unpublished \
+              --theme "$THEME_NAME" \
+              --json > deployment.json
+          fi
+
+          # Shopify CLI JSON may use either a nested theme
+          # object or top-level theme properties.
+          DEPLOYED_ID=$(jq -r \
+            '.theme.id // .id // empty' deployment.json)
+
+          PREVIEW_URL=$(jq -r \
+            '.theme.preview_url // .preview_url // empty' \
+            deployment.json)
+
+          # If the CLI did not return a preview URL,
+          # construct one from the deployed theme ID.
+          if [[ -z "$PREVIEW_URL" && -n "$DEPLOYED_ID" ]]; then
+            PREVIEW_URL="https://${SHOPIFY_FLAG_STORE}/?preview_theme_id=${DEPLOYED_ID}"
+          fi
+
+          if [[ -z "$DEPLOYED_ID" ]]; then
+            echo "::error::Could not determine deployed theme ID."
+            cat deployment.json
+            exit 1
+          fi
+
+          # Verify the deployed theme is the expected
+          # unpublished PR preview before continuing.
+          shopify theme list --json > themes-after.json
+
+          MATCH=$(jq -r \
+            --argjson id "$DEPLOYED_ID" \
+            --arg name "$THEME_NAME" \
+            '.themes[]
+             | select(
+                 (.id | tonumber) == $id
+                 and .name == $name
+                 and .role == "unpublished"
+               )
+             | .id' themes-after.json)
+
+          if [[ -z "$MATCH" ]]; then
+            echo "::error::Deployed theme failed safety verification."
+            exit 1
+          fi
+
+          echo "theme_id=$DEPLOYED_ID" >> "$GITHUB_OUTPUT"
+          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+
+          echo "Preview deployed successfully."
+          echo "Theme ID: $DEPLOYED_ID"
+          echo "Preview URL: $PREVIEW_URL"
+
+      - name: Create or update PR comment
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+          THEME_ID: ${{ steps.deploy.outputs.theme_id }}
+        run: |
+          set -euo pipefail
+
+          MARKER="<!-- shopify-pr-preview -->"
+
+          BODY=$(cat <<EOF
+          $MARKER
+          ## 🛍️ Shopify Preview
+
+          Your Shopify preview environment is ready.
+
+          **[View storefront preview]($PREVIEW_URL)**
+
+          | Property | Value |
+          |---|---|
+          | PR | #$PR_NUMBER |
+          | Shopify theme ID | \`$THEME_ID\` |
+          | Status | Deployed |
+          | Commit | \`${GITHUB_SHA:0:7}\` |
+
+          This preview updates automatically when new commits are pushed.
+
+          The temporary Shopify theme will be deleted when this PR closes.
+          EOF
+          )
+
+          COMMENT_ID=$(gh api \
+            "repos/$GH_REPO/issues/$PR_NUMBER/comments" \
+            --paginate \
+            --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" \
+            | head -n 1)
+
+          if [[ -n "$COMMENT_ID" ]]; then
+            echo "Updating existing preview comment $COMMENT_ID"
+
+            gh api \
+              --method PATCH \
+              "repos/$GH_REPO/issues/comments/$COMMENT_ID" \
+              -f body="$BODY" > /dev/null
+          else
+            echo "Creating preview comment"
+
+            gh pr comment "$PR_NUMBER" \
+              --body "$BODY"
+          fi
+
+  cleanup:
+    name: Delete PR Preview
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !startsWith(github.event.pull_request.head.ref, 'sync/')
+
+    runs-on: ubuntu-latest
+
+    env:
+      SHOPIFY_CLI_THEME_TOKEN: ${{ secrets.SHOPIFY_CLI_THEME_TOKEN }}
+      SHOPIFY_FLAG_STORE: ${{ vars.SHOPIFY_STORE }}
+      SHOPIFY_FLAG_NO_INPUT: "1"
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Install Shopify CLI
+        run: npm install --global @shopify/cli@latest
+
+      - name: Find preview theme
+        id: theme
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          THEME_NAME="GitHub PR-${PR_NUMBER}"
+
+          shopify theme list --json > themes.json
+
+          THEME_ID=$(jq -r \
+            --arg name "$THEME_NAME" \
+            '.themes[]
+             | select(
+                 .name == $name
+                 and .role == "unpublished"
+               )
+             | .id' themes.json | head -n 1)
+
+          echo "id=$THEME_ID" >> "$GITHUB_OUTPUT"
+
+          if [[ -n "$THEME_ID" ]]; then
+            echo "Found preview theme $THEME_ID"
+          else
+            echo "No preview theme found. Nothing to delete."
+          fi
+
+      - name: Delete preview theme
+        if: steps.theme.outputs.id != ''
+        shell: bash
+        env:
+          THEME_ID: ${{ steps.theme.outputs.id }}
+        run: |
+          set -euo pipefail
+
+          echo "Deleting preview theme $THEME_ID"
+
+          shopify theme delete \
+            --theme "$THEME_ID" \
+            --force
+
+          echo "Preview theme deleted successfully."
+
+      - name: Update PR comment
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          MARKER="<!-- shopify-pr-preview -->"
+
+          COMMENT_ID=$(gh api \
+            "repos/$GH_REPO/issues/$PR_NUMBER/comments" \
+            --paginate \
+            --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" \
+            | head -n 1)
+
+          if [[ -z "$COMMENT_ID" ]]; then
+            echo "No preview comment found."
+            exit 0
+          fi
+
+          BODY=$(cat <<EOF
+          $MARKER
+          ## 🛍️ Shopify Preview
+
+          **Preview environment closed.**
+
+          The temporary Shopify theme for PR #$PR_NUMBER has been removed.
+          EOF
+          )
+
+          gh api \
+            --method PATCH \
+            "repos/$GH_REPO/issues/comments/$COMMENT_ID" \
+            -f body="$BODY" > /dev/null
+
+          echo "Preview comment updated."
