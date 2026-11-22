@@ -1,0 +1,89 @@
+name: Shopify PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: shopify-preview-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !startsWith(github.head_ref, 'sync/')
+    runs-on: ubuntu-latest
+
+    env:
+      SHOPIFY_CLI_THEME_TOKEN: ${{ secrets.SHOPIFY_CLI_THEME_TOKEN }}
+      SHOPIFY_FLAG_STORE: ${{ vars.SHOPIFY_STORE }}
+      SHOPIFY_FLAG_NO_INPUT: "1"
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install Shopify CLI
+        run: npm install --global @shopify/cli@latest
+
+      - name: Verify Shopify authentication
+        run: |
+          shopify theme list --json > themes.json
+          echo "Successfully authenticated with Shopify."
+
+      - name: Find existing preview theme
+        id: theme
+        run: |
+          THEME_NAME="GitHub PR-${PR_NUMBER}"
+
+          THEME_ID=$(jq -r \
+            --arg name "$THEME_NAME" \
+            '.[] | select(.name == $name) | .id' \
+            themes.json | head -n 1)
+
+          echo "name=$THEME_NAME" >> "$GITHUB_OUTPUT"
+          echo "id=$THEME_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update preview theme
+        id: deploy
+        run: |
+          if [ -n "${{ steps.theme.outputs.id }}" ]; then
+            shopify theme push \
+              --theme "${{ steps.theme.outputs.id }}" \
+              --json > deployment.json
+          else
+            shopify theme push \
+              --unpublished \
+              --theme "${{ steps.theme.outputs.name }}" \
+              --json > deployment.json
+          fi
+
+          cat deployment.json
+
+      - name: Comment preview URL on PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          THEME_ID=$(jq -r '.theme.id // .id // empty' deployment.json)
+
+          if [ -z "$THEME_ID" ]; then
+            echo "Could not determine deployed theme ID."
+            exit 1
+          fi
+
+          PREVIEW_URL="https://${SHOPIFY_FLAG_STORE}/?preview_theme_id=${THEME_ID}"
+
+          gh pr comment "$PR_NUMBER" \
+            --body "🛍️ Shopify preview ready: ${PREVIEW_URL}"
