@@ -1,0 +1,89 @@
+name: Synchronize Shopify branches
+
+on:
+  push:
+    branches:
+      - main
+      - shopify-sync
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: shopify-branch-sync
+  cancel-in-progress: false
+
+jobs:
+  synchronize:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Synchronize branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch origin main shopify-sync
+
+          MAIN=origin/main
+          SHOPIFY=origin/shopify-sync
+
+          # No differences in file contents
+          if git diff --quiet "$MAIN" "$SHOPIFY"; then
+            echo "Branches have identical contents."
+            exit 0
+          fi
+
+          # Determine which branch is ahead
+          if git merge-base --is-ancestor "$SHOPIFY" "$MAIN"; then
+            SOURCE=main
+            TARGET=shopify-sync
+          elif git merge-base --is-ancestor "$MAIN" "$SHOPIFY"; then
+            SOURCE=shopify-sync
+            TARGET=main
+          else
+            echo "::warning::Both branches have diverged. Manual reconciliation required."
+            exit 0
+          fi
+
+          echo "Synchronizing $SOURCE into $TARGET"
+
+          # Avoid duplicate synchronization PRs
+          EXISTING=$(gh pr list \
+            --base "$TARGET" \
+            --head "sync/$SOURCE-to-$TARGET" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING" ]; then
+            echo "Synchronization PR #$EXISTING already exists."
+            exit 0
+          fi
+
+          # Create a temporary branch from the source
+          git switch --detach "origin/$SOURCE"
+          git switch -c "sync/$SOURCE-to-$TARGET"
+
+          git push origin "sync/$SOURCE-to-$TARGET"
+
+          gh pr create \
+            --base "$TARGET" \
+            --head "sync/$SOURCE-to-$TARGET" \
+            --title "Sync $SOURCE into $TARGET" \
+            --body "Automatically generated synchronization PR. Review before merging."
