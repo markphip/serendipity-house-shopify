@@ -103,7 +103,7 @@
             {%- assign option_name = option.name | downcase -%}
             {%- assign size_options = 'products.product.size_option' | t -%}
             <div class="selector-wrapper">
-              <label for="SingleOptionSelector-{{ forloop.index0 }}">
+              <label for="SingleOptionSelector-{{ section.id }}-{{ forloop.index0 }}">
                 {{ option.name }}
                 {%- if section.settings.size_guide_page != blank and size_options contains option_name -%}
                 <span class="label-extra"><a href="{{ pages[section.settings.size_guide_page].url }}" class="product-size-guide-{{ section.id }}">{{ pages[section.settings.size_guide_page].title }}</a></span>
