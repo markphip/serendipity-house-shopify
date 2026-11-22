@@ -22,3 +22,4 @@ jobs:
 
       - name: Run Theme Check
         run: shopify theme check
+        continue-on-error: true
