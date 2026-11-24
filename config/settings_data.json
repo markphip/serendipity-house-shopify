@@ -2588,6 +2588,7 @@
       },
       "1482145227743": {
         "type": "featured-blog",
+        "disabled": true,
         "settings": {
           "title": "Tutorials & Updates",
           "blog": "tutorials",
@@ -2706,7 +2707,7 @@
           "layout": "left",
           "text_align": "right",
           "title": "Thursday August 6th at 1 ET",
-          "text": "<p>Mark your calendar for the most anticipated DIY drop of the year. </p><p>19 NEW Iron Orchid Designs products & a whole lot of fun! </p><p>BUNDLES available for easy 1-click shopping</p><p>Pay in Installents with your SHOP App</p><p>FREE SHIPPING on orders of $125 no code needed (excludes paint lines, liquids)</p><p>Lot’s of new content to enjoy & FOUR  months of winter creating ahead!</p>",
+          "text": "<p>Mark your calendar for the most anticipated DIY drop of the year.&nbsp;</p><p>19 NEW Iron Orchid Designs products & a whole lot of fun!&nbsp;</p><p>BUNDLES available for easy 1-click shopping</p><p>Pay in Installents with your SHOP App</p><p>FREE SHIPPING on orders of $125 no code needed (excludes paint lines, liquids)</p><p>Lot’s of new content to enjoy & FOUR &nbsp;months of winter creating ahead!</p>",
           "button_label": "",
           "button_link": "shopify://policies/shipping-policy"
         }
@@ -2714,12 +2715,12 @@
       "16116283648a0889ed": {
         "type": "simple-collection",
         "settings": {
-          "title": "IOD Holiday ENCORE",
+          "title": "Paint Couture Must-Haves!",
           "center_heading": true,
-          "button_label": "Let’s shop!",
-          "button_link": "shopify://collections/iod-holiday-encore",
-          "collection": "iod-holiday-encore",
-          "product_count_range": 4
+          "button_label": "",
+          "button_link": "shopify://collections/paint-couture-favorites",
+          "collection": "paint-couture-favorites",
+          "product_count_range": 8
         }
       },
       "1612493877c1499503": {
@@ -2752,6 +2753,7 @@
           "1612493877c1499503-1",
           "1612493877c1499503-2"
         ],
+        "disabled": true,
         "settings": {
           "background_color": "#e7ffff",
           "title": "Testimonials",
@@ -2870,12 +2872,22 @@
           "button_label": "LETS SHOP!",
           "button_link": "shopify://collections/iod-markdowns"
         }
+      },
+      "featured_text_KfxHLG": {
+        "type": "featured-text",
+        "name": "Rich text",
+        "settings": {
+          "title": "Annual Customer Appreciation Event 11/26-11/30",
+          "text": "<p><strong>25% off featured product with code ThankYou2026</strong></p><p>🎄Texture Products: Saltwash, Crackle, Stencil Paste & MORE</p><p>🎄Iron Orchid Designs 2026 Holiday (excludes metallic ink)</p><p>🎄Paint Couture Products</p><p>🎄Decoupage Papers</p><p>🎄Brushes</p><p><strong>PLUS DIY Paint </strong>Select products are discounted (no code needed)&nbsp;</p><p><strong>PLUS FREE Shipping </strong>for non-paint items will magically apply at checkout</p><p>*** <strong>please note: </strong>Dec 1st, &nbsp;Flat Rate Shipping is implemented&nbsp;</p>",
+          "alignment": "right"
+        }
       }
     },
     "content_for_index": [
       "1481011869014",
       "16116281690541204a",
       "simple_collection_mywbVf",
+      "featured_text_KfxHLG",
       "featured_row_kKtCxj",
       "16116283648a0889ed",
       "1481011878590",
