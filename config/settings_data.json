@@ -2714,12 +2714,12 @@
       "16116283648a0889ed": {
         "type": "simple-collection",
         "settings": {
-          "title": "IOD Holiday ENCORE",
+          "title": "Paint Couture Favorites",
           "center_heading": true,
-          "button_label": "Let’s shop!",
-          "button_link": "shopify://collections/iod-holiday-encore",
-          "collection": "iod-holiday-encore",
-          "product_count_range": 4
+          "button_label": "",
+          "button_link": "shopify://collections/paint-couture-favorites",
+          "collection": "paint-couture-favorites",
+          "product_count_range": 8
         }
       },
       "1612493877c1499503": {
