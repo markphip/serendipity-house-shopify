@@ -2752,6 +2752,7 @@
           "1612493877c1499503-1",
           "1612493877c1499503-2"
         ],
+        "disabled": true,
         "settings": {
           "background_color": "#e7ffff",
           "title": "Testimonials",
