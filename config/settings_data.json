@@ -2588,6 +2588,7 @@
       },
       "1482145227743": {
         "type": "featured-blog",
+        "disabled": true,
         "settings": {
           "title": "Tutorials & Updates",
           "blog": "tutorials",
