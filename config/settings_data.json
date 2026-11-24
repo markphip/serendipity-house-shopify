@@ -2870,6 +2870,15 @@
           "button_label": "LETS SHOP!",
           "button_link": "shopify://collections/iod-markdowns"
         }
+      },
+      "featured_text_KfxHLG": {
+        "type": "featured-text",
+        "name": "Rich text",
+        "settings": {
+          "title": "Annual Customer Appreciation Event 11/26-11/30",
+          "text": "<p><strong>25% off these items with code ThankYou2026</strong></p><p>🎄Texture Products: Saltwash, Crackle, Stencil Paste & MORE</p><p>🎄Iron Orchid Designs 2026 Holiday</p><p>🎄Paint Couture Products</p><p>🎄Decoupage Papers</p><p>🎄Brushes</p><p><strong>PLUS DIY Paint Discounts </strong>on select products (no code needed)&nbsp;</p>",
+          "alignment": "right"
+        }
       }
     },
     "content_for_index": [
@@ -2877,6 +2886,7 @@
       "16116281690541204a",
       "simple_collection_mywbVf",
       "featured_row_kKtCxj",
+      "featured_text_KfxHLG",
       "16116283648a0889ed",
       "1481011878590",
       "1656772564068fd3aa",
