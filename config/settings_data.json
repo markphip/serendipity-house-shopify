@@ -2876,7 +2876,7 @@
         "name": "Rich text",
         "settings": {
           "title": "Annual Customer Appreciation Event 11/26-11/30",
-          "text": "<p><strong>25% off these items with code ThankYou2026</strong></p><p>🎄Texture Products: Saltwash, Crackle, Stencil Paste & MORE</p><p>🎄Iron Orchid Designs 2026 Holiday</p><p>🎄Paint Couture Products</p><p>🎄Decoupage Papers</p><p>🎄Brushes</p><p><strong>PLUS DIY Paint Discounts </strong>on select products (no code needed)&nbsp;</p>",
+          "text": "<p><strong>25% off these items with code ThankYou2026</strong></p><p>🎄Texture Products: Saltwash, Crackle, Stencil Paste & MORE</p><p>🎄Iron Orchid Designs 2026 Holiday (excludes metallic ink)</p><p>🎄Paint Couture Products</p><p>🎄Decoupage Papers</p><p>🎄Brushes</p><p><strong>PLUS DIY Paint Discounts </strong>on select products (no code needed)&nbsp;</p>",
           "alignment": "right"
         }
       }
@@ -2885,8 +2885,8 @@
       "1481011869014",
       "16116281690541204a",
       "simple_collection_mywbVf",
-      "featured_row_kKtCxj",
       "featured_text_KfxHLG",
+      "featured_row_kKtCxj",
       "16116283648a0889ed",
       "1481011878590",
       "1656772564068fd3aa",
