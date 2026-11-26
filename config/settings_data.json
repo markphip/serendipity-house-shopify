@@ -2854,7 +2854,7 @@
         "settings": {
           "title": "LOCAL WORKSHOPS",
           "center_heading": true,
-          "button_label": "SHOW ME MORE",
+          "button_label": "",
           "button_link": "shopify://collections/local-workshops",
           "collection": "local-workshops",
           "product_count_range": 4
